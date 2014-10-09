@@ -6,7 +6,7 @@ time = 3
 lat = 4
 lon = 4
 hashtag_id_size = 3
-num_hashtags_per_tweet = 5
+num_hashtags_per_tweet = 10
 
 avg_hashtag_length = 25
 avg_unique_hashtags_per_tweet = 0.5
