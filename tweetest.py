@@ -4,6 +4,7 @@ import tweepy
 from tweepy import StreamListener
 import pprint, json
 import time
+import re
 
 DEBUG = False
 
@@ -11,6 +12,8 @@ consumer_key = open('cons_key.txt', 'r').read().strip()
 consumer_secret = open('cons_secret.txt', 'r').read().strip()
 access_token_key = open('access_key.txt', 'r').read().strip()
 access_token_secret = open('access_secret.txt', 'r').read().strip()
+
+rehash = re.compile('(?<!\w)#\w+')
 
 def parse_geo(geo):
   if not geo:
@@ -26,16 +29,32 @@ class DataStreamer(StreamListener):
   def __init__(self, api = None, fprefix = 'streamer'):
     self.api = api or API()
     self.counter = 0
+    self.hash_counter = 0
     self.fprefix = fprefix
     self.start = time.clock()
+    self.hashes = {}
 
   def on_status(self, data):
     #print(dir(data))
     if data.geo:
       self.counter += 1
       #print(self.counter)
-      if self.counter % 100 == 0:
-        print('{} - {} per second'.format(self.counter, self.counter / (time.clock() - self.start) / 60))
+      if self.counter % 1000 == 0:
+        print('{} - {} tweets per second'.format(self.counter, self.counter / (time.clock() - self.start) / 60))
+      if '#' in data.text:
+        self.hash_counter += 1
+        if self.hash_counter % 100 == 0:
+          print('{} - {} hashed tweets per second'.format(self.hash_counter, self.hash_counter / (time.clock() - self.start) / 60))
+
+        for hashtag in rehash.findall(data.text):
+          if hashtag in self.hashes:
+            self.hashes[hashtag] += 1
+          else:
+            self.hashes[hashtag] = 1
+          if self.hashes[hashtag] % 10 == 0:
+            print('{} has occured {} times.'.format(hashtag, self.hashes[hashtag]))
+
+
     
     if DEBUG:
       print("=" * 40)
