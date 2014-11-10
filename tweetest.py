@@ -37,6 +37,8 @@ class DataStreamer(StreamListener):
   def on_status(self, data):
     #print(dir(data))
     if data.geo:
+      if self.counter == 0:
+        print('Starting')
       self.counter += 1
       #print(self.counter)
       if self.counter % 1000 == 0:
