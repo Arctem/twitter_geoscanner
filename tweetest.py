@@ -19,7 +19,7 @@ def parse_geo(geo):
   if not geo:
     return None
   if geo['type'] != 'Point':
-    print('Error:', geo)
+    print('Geo Error:', geo)
   geo = geo['coordinates']
   ns = str(geo[0]) + ' ' + 'N' if geo[0] >= 0 else 'S'
   ew = str(geo[1]) + ' ' + 'E' if geo[0] >= 0 else 'W'
@@ -38,7 +38,7 @@ class DataStreamer(StreamListener):
     #print(dir(data))
     if data.geo:
       if self.counter == 0:
-        print('Starting')
+        print('DataStreamer Starting')
       self.counter += 1
       #print(self.counter)
       if self.counter % 1000 == 0:
@@ -71,11 +71,11 @@ class DataStreamer(StreamListener):
     return True
 
   def on_limit(self, track):
-    print('Limit: ' + str(track))
+    print('DataStreamer Limit: ' + str(track))
     return
 
   def on_error(self, status):
-    print('Error: ' + str(status))
+    print('DataStreamer Error: ' + str(status))
 
 def main():
   auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
