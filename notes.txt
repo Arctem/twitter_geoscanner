@@ -2,6 +2,7 @@
 # With both a compressed and uncompressed table, for testing.
 # In order to set up mysql, I used the following commands:
 CREATE TABLE `hashtag_codes` (`id` MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT, `name` VARCHAR(255) NOT NULL, `count` SMALLINT UNSIGNED NOT NULL, PRIMARY KEY (id));
+INSERT INTO `hashtag_codes` (`name`,`count`) VALUES ('',0);
 CREATE TABLE `tweets` (`time` MEDIUMINT UNSIGNED NOT NULL, `lat` FLOAT NOT NULL, `lon` FLOAT NOT NULL, `tag0` MEDIUMINT UNSIGNED NOT NULL, `tag1` MEDIUMINT UNSIGNED, `tag2` MEDIUMINT UNSIGNED, `tag3` MEDIUMINT UNSIGNED, `tag4` MEDIUMINT UNSIGNED, `tag5` MEDIUMINT UNSIGNED, `tag6` MEDIUMINT UNSIGNED, `tag7` MEDIUMINT UNSIGNED, `tag8` MEDIUMINT UNSIGNED, `tag9` MEDIUMINT UNSIGNED);
 SET GLOBAL innodb_file_per_table = ON;
 SET GLOBAL innodb_file_format = Barracuda;
