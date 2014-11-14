@@ -43,7 +43,6 @@ class DataStreamer(StreamListener):
   def on_status(self, data):
     if EXITAFTERTHREEMINUTES:
       if (datetime.now() - init_time).total_seconds() > (60*3):
-        print "10 seconds"
         quit()
     
     #print(dir(data))
