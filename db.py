@@ -69,13 +69,10 @@ class Connection:
     insert = ("INSERT INTO `hashtag_codes` (`name`,`count`) VALUES (%(name)s, %(count)s)")
     update = ("UPDATE `hashtag_codes` SET `count`=%(count)s WHERE `name`=%(name)s")
     data = { "name": hashtag, "count": tag_count }
-    success = True
     if num_rows == 0:
-      success = self.sqlCall(insert, data)
+      self.sqlCall(insert, data)
     else:
-      success = self.sqlCall(update, data)
-    if not success:
-      return 0
+      self.sqlCall(update, data)
     return tag_count
 
   def tagToInt(self, hashtag):

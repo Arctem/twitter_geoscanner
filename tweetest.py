@@ -5,6 +5,8 @@ from tweepy import StreamListener
 import pprint, json
 import time
 import re
+import db
+from datetime import datetime
 
 DEBUG = False
 
@@ -14,6 +16,9 @@ access_token_key = open('access_key.txt', 'r').read().strip()
 access_token_secret = open('access_secret.txt', 'r').read().strip()
 
 rehash = re.compile('(?<!\w)#\w+')
+
+EXITAFTERTHREEMINUTES = True
+init_time = datetime.now()
 
 def parse_geo(geo):
   if not geo:
@@ -26,15 +31,21 @@ def parse_geo(geo):
   return ns + ' ' + ew
 
 class DataStreamer(StreamListener):
-  def __init__(self, api = None, fprefix = 'streamer'):
+  def __init__(self, api = None, fprefix = 'streamer', conn = None):
     self.api = api or API()
     self.counter = 0
     self.hash_counter = 0
     self.fprefix = fprefix
     self.start = time.clock()
     self.hashes = {}
+    self.conn = conn
 
   def on_status(self, data):
+    if EXITAFTERTHREEMINUTES:
+      if (datetime.now() - init_time).total_seconds() > (60*3):
+        print "10 seconds"
+        quit()
+    
     #print(dir(data))
     if data.geo:
       if self.counter == 0:
@@ -48,15 +59,20 @@ class DataStreamer(StreamListener):
         if self.hash_counter % 100 == 0:
           print('{} - {} hashed tweets per second'.format(self.hash_counter, self.hash_counter / (time.clock() - self.start) / 60))
 
-        for hashtag in rehash.findall(data.text):
-          if hashtag in self.hashes:
-            self.hashes[hashtag] += 1
-          else:
-            self.hashes[hashtag] = 1
-          if self.hashes[hashtag] % 10 == 0:
-            print('{} has occured {} times.'.format(hashtag, self.hashes[hashtag]))
+        hashtags = rehash.findall(data.text)
+        hashtags_list = []
+        for hashtag in hashtags:
+          hashtag = hashtag.lstrip("#")
+          if len(hashtag) > 0:
+            hashtags_list.append(hashtag)
 
-
+        if len(hashtags_list) > 0 and self.conn:
+          for hashtag in hashtags_list:
+            hash_occurances = self.conn.increaseHashtagCount(hashtag)
+            if hash_occurances % 10 == 0:
+              print('{} has occured {} times.'.format(hashtag, hash_occurances))
+          geo = data.geo["coordinates"]
+          self.conn.insertTweet({"geo": {"lat":geo[0],"lon":geo[1]}, "tags": hashtags_list})
     
     if DEBUG:
       print("=" * 40)
@@ -81,8 +97,10 @@ def main():
   auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
   auth.set_access_token(access_token_key, access_token_secret)
 
+  connection = db.Connection()
+
   api = tweepy.API(auth)
-  l = DataStreamer(api)
+  l = DataStreamer(api, conn=connection)
   stream = tweepy.Stream(auth, l)
   stream.filter(locations=[-180,-90,180,90], stall_warnings=True)
   #stream.filter(languages=['english'])
