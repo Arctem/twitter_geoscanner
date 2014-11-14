@@ -109,11 +109,8 @@ class Connection:
     data = (time, tweet["geo"]["lat"], tweet["geo"]["lon"],
             tags[0], tags[1], tags[2], tags[3], tags[4],
             tags[5], tags[6], tags[7], tags[8], tags[9])
-    if not self.sqlCall(insert, data):
-      return False
-    if not self.sqlCall(insert_compressed, data):
-      return False
-    return True
+    self.sqlCall(insert, data)
+    self.sqlCall(insert_compressed, data)
 
   def close(self):
     self.cursor.close()
