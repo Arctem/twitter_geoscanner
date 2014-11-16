@@ -17,7 +17,7 @@ access_token_secret = open('access_secret.txt', 'r').read().strip()
 
 rehash = re.compile('(?<!\w)#\w+')
 
-EXITAFTERTHREEMINUTES = True
+EXITAFTERTHREEMINUTES = False
 init_time = datetime.now()
 
 def parse_geo(geo):
