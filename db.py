@@ -10,6 +10,10 @@ class Connection:
     if (self.cnx != None):
       self.cursor = self.cnx.cursor()
 
+  # Execute a mysql call.
+  # Get the resultant rows with a loop over Connection.cursor.
+  # @param query String query in mysql form, with values encoded as %(valuename)s
+  # @param data A dictionary of values to insert into the query string, eg {"valuename":"value"}
   # @return the returned value from cnx.cursor().execute(), or False on error
   def sqlCall(self, query, data):
     try:
@@ -75,6 +79,7 @@ class Connection:
       self.sqlCall(update, data)
     return tag_count
 
+  # Get the ID of a given hashtag string
   def tagToInt(self, hashtag):
     get_tag_id = "SELECT `id` FROM `hashtag_codes` WHERE `name`=%(name)s"
     self.sqlCall(get_tag_id, {"name":hashtag})
@@ -83,7 +88,7 @@ class Connection:
       return 0
     for row in rows:
       return row[0]
-  
+
   def __tagsToInts(self, hashtagSet):
     for i in range(len(hashtagSet)):
       hashtagSet[i] = self.tagToInt(hashtagSet[i])
@@ -109,10 +114,59 @@ class Connection:
     self.sqlCall(insert, data)
     self.sqlCall(insert_compressed, data)
 
+  def __performTweetQuery(self, isCount, startTime, endTime, hashtagID, limit, order):
+    s = "SELECT "
+    if (isCount):
+      s += "COUNT(*) "
+    else:
+      s += "* "
+    s += " FROM `tweets`"
+    if (startTime > -1 or endTime > -1 or hashtagID > -1):
+      s += " WHERE"
+      a = ""
+      if (startTime > -1):
+        s += " `time` >= %(startTime)s"
+        a = " and"
+      if (endTime > -1):
+        s += a
+        s += " `time` <= %(endTime)s"
+        a = " and"
+      if (hashtagID > -1):
+        s += a
+        s += " (`tag0`=%(hashtagID)s"
+        for i in range(1,10):
+          s += " or `tag" + i + "`=%(hashtagID)s"
+        s += ")"
+        a = " and"
+    if (limit > -1):
+      s += " LIMIT %(limit)s"
+    s += " ORDER BY %(order)s"
+    data = {"startTime":startTime, "endTime":endTime, "hashtagID":hashtagID, "limit":limit, "order":order}
+    self.sqlCall(s, data)
+
+  # Get a list of tweets based on search criteria.
+  # @param startTime The time of the tweet must be >= startTime,
+  #     where epoch = Nov 1, 2014
+  # @param endTime The time of the tweet must be <= startTime,
+  #     where epoch = Nov 1, 2014
+  # @param hashtagID The tweets must contain the given hashtag
+  # @param limit The maximum number of rows to select
+  # @param order The value to order by
+  # @return The set of rows from the tweets table that matches the given query.
+  def selectTweets(self, startTime=-1, endTime=-1, hashtagID=-1, limit=-1, order="`time` ASC"):
+    self.__performTweetQuery(False, startTime, endTime, hashtagID, limit, order)
+    # TODO
+
+  # Get the number of tweets that match the given criteria
+  # For parameters, see {@link selectTweets}
+  def countTweets(self, startTime=-1, endTime=-1, hashtagID=-1, limit=-1):
+    self.__performTweetQuery(True, startTime, endTime, hashtagID, limit, "`time` AST")
+    # TODO
+
   def close(self):
     self.cursor.close()
     self.cnx.close()
-    
+
 def main():
   connection = Connection()
   for s in ("a", "b", "c"):
