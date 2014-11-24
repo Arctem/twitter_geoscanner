@@ -39,7 +39,7 @@ class Connection:
       elif err.errno == errorcode.ER_BAD_DB_ERROR:
         print("Database does not exists")
       else:
-        print("Error: " + err)
+        print("Error: " + str(err))
     if (self.cnx.is_connected()):
       print "connected"
     else:
