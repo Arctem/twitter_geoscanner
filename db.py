@@ -114,10 +114,16 @@ class Connection:
     self.sqlCall(insert, data)
     self.sqlCall(insert_compressed, data)
 
-  def __performTweetQuery(self, isCount, startTime, endTime, hashtagID, limit, order):
+  def __performTweetQuery(self, isCount, startTime, endTime, hashtagIDs, limit, order):
+    data = {"startTime":startTime, "endTime":endTime, "limit":limit, "order":order}
+    hashtagIndex = 0
+    for hashtagID in hashtagIDs:
+      data["hid" + str(hashtagIndex)] = hashtagID
+      hashtagIndex += 1
+
     s = "SELECT "
     if (isCount):
-      s += "COUNT(*) "
+      s += "COUNT(*) AS 'count' "
     else:
       s += "* "
     s += " FROM `tweets`"
@@ -131,17 +137,19 @@ class Connection:
         s += a
         s += " `time` <= %(endTime)s"
         a = " and"
-      if (hashtagID > -1):
+      hashtagIndex = 0
+      for hashtagID in hashtagIDs:
         s += a
-        s += " (`tag0`=%(hashtagID)s"
+        s += " (`tag0`=%(hid" + str(hashtagIndex) + ")s"
         for i in range(1,10):
-          s += " or `tag" + i + "`=%(hashtagID)s"
+          s += " or `tag" + str(i) + "`=%(hid" + str(hashtagIndex) + ")s"
         s += ")"
         a = " and"
+        hashtagIndex += 1
+    s += " ORDER BY %(order)s"
     if (limit > -1):
       s += " LIMIT %(limit)s"
-    s += " ORDER BY %(order)s"
-    data = {"startTime":startTime, "endTime":endTime, "hashtagID":hashtagID, "limit":limit, "order":order}
+
     self.sqlCall(s, data)
 
   # Get a list of tweets based on search criteria.
@@ -149,19 +157,20 @@ class Connection:
   #     where epoch = Nov 1, 2014
   # @param endTime The time of the tweet must be <= startTime,
   #     where epoch = Nov 1, 2014
-  # @param hashtagID The tweets must contain the given hashtag
+  # @param hashtagIDs The tweets must contain the given hashtag(s)
   # @param limit The maximum number of rows to select
   # @param order The value to order by
   # @return The set of rows from the tweets table that matches the given query.
-  def selectTweets(self, startTime=-1, endTime=-1, hashtagID=-1, limit=-1, order="`time` ASC"):
-    self.__performTweetQuery(False, startTime, endTime, hashtagID, limit, order)
-    # TODO
+  def selectTweets(self, startTime=-1, endTime=-1, hashtagIDs=[], limit=-1, order="`time` ASC"):
+    self.__performTweetQuery(False, startTime, endTime, hashtagIDs, limit, order)
+    return self.cursor.fetchall()
 
   # Get the number of tweets that match the given criteria
   # For parameters, see {@link selectTweets}
-  def countTweets(self, startTime=-1, endTime=-1, hashtagID=-1, limit=-1):
-    self.__performTweetQuery(True, startTime, endTime, hashtagID, limit, "`time` AST")
-    # TODO
+  def countTweets(self, startTime=-1, endTime=-1, hashtagIDs=[], limit=-1):
+    self.__performTweetQuery(True, startTime, endTime, hashtagIDs, limit, "`time` AST")
+    for row in self.cursor:
+      return row[0]["count"]
 
   def close(self):
     self.cursor.close()
