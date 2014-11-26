@@ -8,6 +8,22 @@ import re
 import db
 from datetime import datetime
 
+class Analysis:
+
+  # We want to score tweets based on the following formula:
+  # tagTrendScore(hashtag, hour, day, week) =
+  #   |hashtagOccurances(hashtag, hour, dayOfWeek, week)| -
+  #   ( occurancesMean(hashtag, hour, dayOfWeek) / 
+  #     occurancesStandardDeviation(hashtag, hour, dayOfWeek) )
+  def tagTrendScore(self, hashtag, hour, dayOfWeek, week):
+    numOccurances = self.hashtagOccurances(hashtag, hour, dayOfWeek, week)
+    occurancesMean = self.occurancesMean(hashtag, hour, dayOfWeek)
+    occurancesStandardDeviation = self.occurancesStandardDeviation(hashtag, hour, dayOfWeek)
+    return numOccurances - (occurancesMean / occurancesStandardDeviation)
+
+  def hashtagOccurances(self, hashtag, dayOfWeek, week):
+    pass
+
 def main():
   connection  = db.Connection()
   first_tweet = "SELECT * FROM `tweets` ORDER BY `time` ASC LIMIT 1"

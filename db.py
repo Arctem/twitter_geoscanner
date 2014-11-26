@@ -1,5 +1,5 @@
 import mysql.connector, ConfigParser
-from datetime import datetime
+from datetime import datetime,timedelta
 
 class Connection:
   cnx = None
@@ -92,6 +92,97 @@ class Connection:
   def __tagsToInts(self, hashtagSet):
     for i in range(len(hashtagSet)):
       hashtagSet[i] = self.tagToInt(hashtagSet[i])
+
+  # @return the index of the last week for the given hour and dayOfWeek
+  def getGreatestWeek(self, hour, dayOfWeek):
+    lastTweetTime = self.getLastTime()
+    week = self.getWeek(lastTweetTime)
+    if (dayOfWeek > self.getDayOfWeek(lastTweetTime) or 
+      (hour > self.getHour(lastTweetTime) and dayOfWeek == self.getDayOfWeek(lastTweetTime))):
+      week -= 1
+    return week
+
+  # @return the DB time of the first recorded tweet
+  def getFirstTime(self):
+    self.sqlCall("SELECT `time` FROM `tweets` ORDER BY `time` ASC LIMIT 1", {})
+    for row in self.cursor:
+      return int( row[0] )
+
+  # @return the DB time of the last recorded tweet
+  def getLastTime(self):
+    self.sqlCall("SELECT `time` FROM `tweets` ORDER BY `time` DESC LIMIT 1", {})
+    for row in self.cursor:
+      return int( row[0] )
+
+  # @return the week offset from Nov 1 to the given tweet time, where
+  #   week0 = week containing Nov 
+  #   week1 = following week
+  #   ...
+  def getWeek(self, tweetTime):
+    spd = 60 * 60 * 24
+    spw = spd * 7
+    firstSunday = -6 * spd
+    return (tweetTime - firstSunday) / spw
+
+  # @return the dayOfWeek of the given tweet time
+  def getDayOfWeek(self, tweetTime):
+    spd = 60 * 60 * 24
+    days = tweetTime / spd
+    # add 6 because Nov 1 is a Saturday
+    dayOfWeek = (days + 6) % 7
+    return dayOfWeek
+
+  # @return the hour of the given tweet time
+  def getHour(self, tweetTime):
+    sph = 60 * 60
+    hours = tweetTime / sph
+    return hours % 24
+
+  # Get the database time for a given day, hour, and week offset from the first
+  # recorded tweet time.
+  # @param hour 0-23
+  # @param dayOfWeek 0-6 (Sunday - Saturday)
+  # @param week 0 - n (where n is number of weeks that have occured)
+  # @return the DB time on success, -1 if any of the parameters are bad
+  def getDBTime(self, hour, dayOfWeek, week):
+    if (hour < 0 or hour > 23 or
+      dayOfWeek < 0 or dayOfWeek > 6 or
+      week < 0):
+      return -1
+
+    if (week > self.getGreatestWeek(hour, dayOfWeek)):
+      return -1
+
+    year = 2014
+    month = 11
+    firstTweetTime = self.getFirstTime()
+
+    # calculate day of month
+    day = self.getWeek(firstTweetTime) * 7 + dayOfWeek # if you assume Nov 1 is a Sunday
+    day = day - 5 # except that Nov 1 is a Saturday
+    day += week * 7
+
+    # 30 days hath November
+    if (day > 30):
+      day -= 30
+      month += 1
+
+    return self.toDBTime(datetime(year,month,day,hour))
+
+  # Converts a real time to database time
+  # @param dt A datetime, as in datetime.now()
+  # @return the datetime - Nov 1, 2014
+  def toDBTime(self, dt):
+    return int( (dt - datetime(2014,11,1)).total_seconds() )
+
+  # converts a database time to a real datetime
+  # @param dbTime The DB time to convert
+  # @return The real time, as a datetime object
+  def toRealTime(self, dbTime):
+    spd = 60 * 60 * 24
+    days = dbTime / spd
+    seconds = dbTime % spd
+    return datetime(2014,11,1) + timedelta(days, seconds)
 
   # inserts the given tweet into the tweets table#
   # @param tweet should be formatted { geo: {lat: float, lon: float}, tags: [list of strings]}
