@@ -7,8 +7,13 @@ import time
 import re
 import db
 from datetime import datetime
+import numpy
+
+connection  = db.Connection()
 
 class Analysis:
+  def __init__(self):
+    pass
 
   # We want to score tweets based on the following formula:
   # tagTrendScore(hashtag, hour, day, week) =
@@ -21,11 +26,36 @@ class Analysis:
     occurancesStandardDeviation = self.occurancesStandardDeviation(hashtag, hour, dayOfWeek)
     return numOccurances - (occurancesMean / occurancesStandardDeviation)
 
-  def hashtagOccurances(self, hashtag, dayOfWeek, week):
-    pass
+  # @return the number of tags that occur within the given time period that contain
+  #   the given hashtag, or -1 if the time parameters are out of bounds
+  def hashtagOccurances(self, hashtag, hour, dayOfWeek, week):
+    time = connection.getDBTime(hour, dayOfWeek, week)
+    if (time < 0):
+      return -1
+    sph = 60 * 60
+    return connection.countTweets(time, time+sph, [hashtag])
+
+  # return A list of counts of hashtag occurances for all weeks of the given day/hour
+  def allHashtagOccurances(self, hashtag, hour, dayOfWeek):
+    greatestWeek = connection.getGreatestWeek(hour, dayOfWeek)
+    counts = []
+    for week in range(greatestWeek):
+      counts.append(self.hashtagOccurances(hashtag, hour, dayOfWeek, week))
+    return counts
+
+  # @return The mean of the number of occurances over all weeks
+  def occurancesMean(self, hashtag, hour, dayOfWeek):
+    counts = self.allHashtagOccurances(hashtag, hour, dayOfWeek)
+    arr = numpy.array(counts)
+    return numpy.mean(arr)
+
+  # @return the standard deviation of the number of occurances over all weeks
+  def occurancesStandardDeviation(self, hashtag, hour, dayOfWeek):
+    counts = self.allHashtagOccurances(hashtag, hour, dayOfWeek)
+    arr = numpy.array(counts)
+    return numpy.std(arr)
 
 def main():
-  connection  = db.Connection()
   first_tweet = "SELECT * FROM `tweets` ORDER BY `time` ASC LIMIT 1"
   last_tweet = "SELECT * FROM `tweets` ORDER BY `time` DESC LIMIT 1"
 

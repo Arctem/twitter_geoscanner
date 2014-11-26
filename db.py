@@ -261,7 +261,7 @@ class Connection:
   def countTweets(self, startTime=-1, endTime=-1, hashtagIDs=[], limit=-1):
     self.__performTweetQuery(True, startTime, endTime, hashtagIDs, limit, "`time` AST")
     for row in self.cursor:
-      return row[0]["count"]
+      return row[0]
 
   def close(self):
     self.cursor.close()
