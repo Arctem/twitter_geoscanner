@@ -10,10 +10,24 @@ from datetime import datetime
 import numpy
 
 connection  = db.Connection()
+dbtime = db.dbTime(connection)
 
 class Analysis:
   def __init__(self):
     pass
+
+  # Get the tagTrendScore for all hour, days, and weeks
+  def tagTrendScoreAllTimes(self, hashtag):
+    trendScores = {}
+    for hour in range(24):
+      for dayOfWeek in range(7):
+        greatestWeek = dbtime.getGreatestWeek(hour,dayOfWeek)
+        for week in range(greatestWeek):
+          dt = dbtime.toRealTime(dbtime.getDBTime(hour, dayOfWeek, week))
+          iso = dt.isoformat()
+          score = self.tagTrendScore(hashtag, hour, dayOfWeek, week)
+          trendScores[iso] = score
+    return trendScores
 
   # We want to score tweets based on the following formula:
   # tagTrendScore(hashtag, hour, day, week) =
@@ -24,12 +38,14 @@ class Analysis:
     numOccurances = self.hashtagOccurances(hashtag, hour, dayOfWeek, week)
     occurancesMean = self.occurancesMean(hashtag, hour, dayOfWeek)
     occurancesStandardDeviation = self.occurancesStandardDeviation(hashtag, hour, dayOfWeek)
+    if (occurancesStandardDeviation == 0):
+      return 0
     return numOccurances - (occurancesMean / occurancesStandardDeviation)
 
   # @return the number of tags that occur within the given time period that contain
   #   the given hashtag, or -1 if the time parameters are out of bounds
   def hashtagOccurances(self, hashtag, hour, dayOfWeek, week):
-    time = connection.getDBTime(hour, dayOfWeek, week)
+    time = dbtime.getDBTime(hour, dayOfWeek, week)
     if (time < 0):
       return -1
     sph = 60 * 60
@@ -37,7 +53,7 @@ class Analysis:
 
   # return A list of counts of hashtag occurances for all weeks of the given day/hour
   def allHashtagOccurances(self, hashtag, hour, dayOfWeek):
-    greatestWeek = connection.getGreatestWeek(hour, dayOfWeek)
+    greatestWeek = dbtime.getGreatestWeek(hour, dayOfWeek)
     counts = []
     for week in range(greatestWeek):
       counts.append(self.hashtagOccurances(hashtag, hour, dayOfWeek, week))
