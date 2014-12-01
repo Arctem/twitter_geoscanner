@@ -14,3 +14,7 @@ https://dev.twitter.com/oauth/reference/get/oauth/authorize
 # getting tweepy to communicate with twitter via python
 apt-get install python-pip
 pip install tweepy
+
+# other python libraries
+apt-get install python-mpltoolkits.basemap
+apt-get install python-matplotlib
