@@ -9,12 +9,12 @@ import db
 from datetime import datetime
 import numpy
 
-connection  = db.Connection()
-dbtime = db.dbTime(connection)
+
 
 class Analysis:
   def __init__(self):
-    pass
+    self.connection  = db.Connection()
+    self.dbtime = db.dbTime(self.connection)
 
   # Get the tagTrendScore for all hour, days, and weeks
   def tagTrendScoreAllTimes(self, hashtag):
@@ -49,7 +49,7 @@ class Analysis:
     if (time < 0):
       return -1
     sph = 60 * 60
-    return connection.countTweets(time, time+sph, [hashtag])
+    return self.connection.countTweets(time, time+sph, [hashtag])
 
   # return A list of counts of hashtag occurances for all weeks of the given day/hour
   def allHashtagOccurances(self, hashtag, hour, dayOfWeek):
@@ -70,44 +70,52 @@ class Analysis:
     counts = self.allHashtagOccurances(hashtag, hour, dayOfWeek)
     arr = numpy.array(counts)
     return numpy.std(arr)
+  
+  def get_valid_ranges(self):
+    first_tweet = "SELECT * FROM `tweets` ORDER BY `time` ASC LIMIT 1"
+    last_tweet = "SELECT * FROM `tweets` ORDER BY `time` DESC LIMIT 1"
 
-def main():
-  first_tweet = "SELECT * FROM `tweets` ORDER BY `time` ASC LIMIT 1"
-  last_tweet = "SELECT * FROM `tweets` ORDER BY `time` DESC LIMIT 1"
+    ten_minutes = 60 * 10
 
-  ten_minutes = 60 * 10
+    self.connection.sqlCall(first_tweet, {})
+    first_time = [x for x in self.connection.cursor][0][0]
+    start_time = first_time / ten_minutes * ten_minutes
+    print('Start time: {}'.format(start_time))
 
-  connection.sqlCall(first_tweet, {})
-  first_time = [x for x in connection.cursor][0][0]
-  start_time = first_time / ten_minutes * ten_minutes
-  print('Start time: {}'.format(start_time))
+    self.connection.sqlCall(last_tweet, {})
+    last_time = [x for x in self.connection.cursor][0][0]
+    end_time = (last_time / ten_minutes + 1) * ten_minutes
+    print('End time: {}'.format(end_time))
 
-  connection.sqlCall(last_tweet, {})
-  last_time = [x for x in connection.cursor][0][0]
-  end_time = (last_time / ten_minutes + 1) * ten_minutes
-  print('End time: {}'.format(end_time))
-
-  count_range = "SELECT COUNT(*) FROM `tweets` WHERE (`time`>%(start)s AND `time`<%(end)s);"
-  results = []
-  start = None
-  ranges = []
-  for t in range(start_time, end_time, ten_minutes):
-    connection.sqlCall(count_range, {'start': t, 'end': t + ten_minutes})
-    results.append([x for x in connection.cursor][0][0])
+    count_range = "SELECT COUNT(*) FROM `tweets` WHERE (`time`>%(start)s AND `time`<%(end)s);"
+    results = []
+    start = None
+    ranges = []
+    for t in range(start_time, end_time, ten_minutes):
+      self.connection.sqlCall(count_range, {'start': t, 'end': t + ten_minutes})
+      results.append([x for x in self.connection.cursor][0][0])
     
-    if results[-1] != 0:
-      if start is None:
-        start = t
-    else:
-      if start is not None:
-        ranges.append((start, t, t - start))
-        start = None
-        print(ranges[-1])
-    
+      if results[-1] != 0:
+        if start is None:
+          start = t
+      else:
+        if start is not None:
+          ranges.append((start, t, t - start))
+          start = None
+          print(ranges[-1])
+          
     #print(t, results[-1])
 
-  print(results) #number of tweets per 10 minutes
-  print(ranges)
+    #print(results) #number of tweets per 10 minutes
+    #print(ranges)
+    return ranges
+
+
+def main():
+  analysis = Analysis()
+  ranges = analysis.get_valid_ranges()
+  ranges = sorted(ranges, key=lambda r: r[2])
+  print(ranges[:10])
 
 
 if __name__ == '__main__':
