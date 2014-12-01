@@ -89,11 +89,25 @@ def main():
 
   count_range = "SELECT COUNT(*) FROM `tweets` WHERE (`time`>%(start)s AND `time`<%(end)s);"
   results = []
+  start = None
+  ranges = []
   for t in range(start_time, end_time, ten_minutes):
     connection.sqlCall(count_range, {'start': t, 'end': t + ten_minutes})
     results.append([x for x in connection.cursor][0][0])
-    print(t, results[-1])
+    
+    if results[-1] != 0:
+      if start is None:
+        start = t
+    else:
+      if start is not None:
+        ranges.append((start, t, t - start))
+        start = None
+        print(ranges[-1])
+    
+    #print(t, results[-1])
+
   print(results) #number of tweets per 10 minutes
+  print(ranges)
 
 
 if __name__ == '__main__':
