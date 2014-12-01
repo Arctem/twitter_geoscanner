@@ -115,7 +115,7 @@ def main():
   analysis = Analysis()
   ranges = analysis.get_valid_ranges()
   ranges = sorted(ranges, key=lambda r: r[2])
-  print(ranges[:10])
+  print(ranges)
 
 
 if __name__ == '__main__':
