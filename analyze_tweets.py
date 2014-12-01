@@ -29,6 +29,21 @@ class Analysis:
           trendScores[iso] = score
     return trendScores
 
+    def getTopHashes(self, limit=100):
+      
+      connection.sqlCall("select * from hashtag_codes order by count desc limit "+limit+";")
+      for row in connection.cursor:
+        topHashes.append(row[0:2])
+      return topHashes
+
+      def tagTrendScoresTopHashes()
+      return tagTrendScores
+
+      def getDataToPlot(hashtag, timePeriod)
+      return dataToPlot
+
+        
+
   # We want to score tweets based on the following formula:
   # tagTrendScore(hashtag, hour, day, week) =
   #   |hashtagOccurances(hashtag, hour, dayOfWeek, week)| -
