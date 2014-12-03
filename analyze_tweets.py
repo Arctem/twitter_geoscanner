@@ -27,7 +27,22 @@ class Analysis:
           iso = dt.isoformat()
           score = self.tagTrendScore(hashtag, hour, dayOfWeek, week)
           trendScores[iso] = score
-    return trendScores
+          return trendScores
+
+    def getTopHashes(self, limit=100):
+      
+      connection.sqlCall("select * from hashtag_codes order by count desc limit "+limit+";")
+      for row in connection.cursor:
+        topHashes.append(row[0:2])
+        return topHashes
+
+  def tagTrendScoresTopHashes():
+     return tagTrendScores
+
+  def getDataToPlot(hashtag, timePeriod):
+    return dataToPlot
+
+        
 
   # We want to score tweets based on the following formula:
   # tagTrendScore(hashtag, hour, day, week) =
@@ -40,7 +55,7 @@ class Analysis:
     occurancesStandardDeviation = self.occurancesStandardDeviation(hashtag, hour, dayOfWeek)
     if (occurancesStandardDeviation == 0):
       return 0
-    return numOccurances - (occurancesMean / occurancesStandardDeviation)
+      return numOccurances - (occurancesMean / occurancesStandardDeviation)
 
   # @return the number of tags that occur within the given time period that contain
   #   the given hashtag, or -1 if the time parameters are out of bounds
@@ -48,8 +63,8 @@ class Analysis:
     time = dbtime.getDBTime(hour, dayOfWeek, week)
     if (time < 0):
       return -1
-    sph = 60 * 60
-    return self.connection.countTweets(time, time+sph, [hashtag])
+      sph = 60 * 60
+      return self.connection.countTweets(time, time+sph, [hashtag])
 
   # return A list of counts of hashtag occurances for all weeks of the given day/hour
   def allHashtagOccurances(self, hashtag, hour, dayOfWeek):
@@ -57,7 +72,7 @@ class Analysis:
     counts = []
     for week in range(greatestWeek):
       counts.append(self.hashtagOccurances(hashtag, hour, dayOfWeek, week))
-    return counts
+      return counts
 
   # @return The mean of the number of occurances over all weeks
   def occurancesMean(self, hashtag, hour, dayOfWeek):
@@ -70,7 +85,7 @@ class Analysis:
     counts = self.allHashtagOccurances(hashtag, hour, dayOfWeek)
     arr = numpy.array(counts)
     return numpy.std(arr)
-  
+    
   def get_valid_ranges(self):
     first_tweet = "SELECT * FROM `tweets` ORDER BY `time` ASC LIMIT 1"
     last_tweet = "SELECT * FROM `tweets` ORDER BY `time` DESC LIMIT 1"
@@ -94,16 +109,16 @@ class Analysis:
     for t in range(start_time, end_time, ten_minutes):
       self.connection.sqlCall(count_range, {'start': t, 'end': t + ten_minutes})
       results.append([x for x in self.connection.cursor][0][0])
-    
+      
       if results[-1] != 0:
         if start is None:
           start = t
-      else:
-        if start is not None:
-          ranges.append((start, t, t - start))
-          start = None
-          print(ranges[-1])
-          
+        else:
+          if start is not None:
+            ranges.append((start, t, t - start))
+            start = None
+            print(ranges[-1])
+            
     #print(t, results[-1])
 
     #print(results) #number of tweets per 10 minutes
@@ -115,7 +130,7 @@ def main():
   analysis = Analysis()
   ranges = analysis.get_valid_ranges()
   ranges = sorted(ranges, key=lambda r: r[2])
-  print(ranges[:10])
+  print(ranges)
 
 
 if __name__ == '__main__':
