@@ -21,20 +21,19 @@ class Analysis:
     trendScores = {}
     for hour in range(24):
       for dayOfWeek in range(7):
-        greatestWeek = dbtime.getGreatestWeek(hour,dayOfWeek)
+        greatestWeek = self.dbtime.getGreatestWeek(hour,dayOfWeek)
         for week in range(greatestWeek):
-          dt = dbtime.toRealTime(dbtime.getDBTime(hour, dayOfWeek, week))
+          dt = self.dbtime.toRealTime(self.dbtime.getDBTime(hour, dayOfWeek, week))
           iso = dt.isoformat()
           score = self.tagTrendScore(hashtag, hour, dayOfWeek, week)
           trendScores[iso] = score
-          return trendScores
+    return trendScores
 
-    def getTopHashes(self, limit=100):
-      
-      connection.sqlCall("select * from hashtag_codes order by count desc limit "+limit+";")
-      for row in connection.cursor:
-        topHashes.append(row[0:2])
-        return topHashes
+  def getTopHashes(self, limit=100):
+    self.connection.sqlCall("select * from hashtag_codes order by count desc limit "+limit+";")
+    for row in self.connection.cursor:
+      topHashes.append(row[0:2])
+    return topHashes
 
   def tagTrendScoresTopHashes():
      return tagTrendScores
@@ -42,7 +41,7 @@ class Analysis:
   def getDataToPlot(hashtag, timePeriod):
     return dataToPlot
 
-        
+
 
   # We want to score tweets based on the following formula:
   # tagTrendScore(hashtag, hour, day, week) =
@@ -55,24 +54,24 @@ class Analysis:
     occurancesStandardDeviation = self.occurancesStandardDeviation(hashtag, hour, dayOfWeek)
     if (occurancesStandardDeviation == 0):
       return 0
-      return numOccurances - (occurancesMean / occurancesStandardDeviation)
+    return numOccurances - (occurancesMean / occurancesStandardDeviation)
 
   # @return the number of tags that occur within the given time period that contain
   #   the given hashtag, or -1 if the time parameters are out of bounds
   def hashtagOccurances(self, hashtag, hour, dayOfWeek, week):
-    time = dbtime.getDBTime(hour, dayOfWeek, week)
+    time = self.dbtime.getDBTime(hour, dayOfWeek, week)
     if (time < 0):
       return -1
-      sph = 60 * 60
-      return self.connection.countTweets(time, time+sph, [hashtag])
+    sph = 60 * 60
+    return self.connection.countTweets(time, time+sph, [hashtag])
 
   # return A list of counts of hashtag occurances for all weeks of the given day/hour
   def allHashtagOccurances(self, hashtag, hour, dayOfWeek):
-    greatestWeek = dbtime.getGreatestWeek(hour, dayOfWeek)
+    greatestWeek = self.dbtime.getGreatestWeek(hour, dayOfWeek)
     counts = []
     for week in range(greatestWeek):
       counts.append(self.hashtagOccurances(hashtag, hour, dayOfWeek, week))
-      return counts
+    return counts
 
   # @return The mean of the number of occurances over all weeks
   def occurancesMean(self, hashtag, hour, dayOfWeek):

@@ -6,20 +6,24 @@ import numpy
 class plotdata:
   serieses
   mapIsDrawn
-  plt
+  plt # plot
+  m # map
   
   def __init__(self):
     self.serieses = []
     self.mapIsDrawn = False
     self.plt = None
-    self.map = None
+    self.m = None
 
   # add a time-location series to be plotted
   # should be in the format
-  # [
-  #   [time (int), latitude (double), longitude (double)],
-  #   ...
-  # ]
+  # {
+  #   name: hashtag,
+  #   data: [
+  #           [time (int), latitude (double), longitude (double)],
+  #           ...
+  #         ]
+  # }
   def addSeries(self, series):
     if (len(series) == 0):
       print("Nothing in series")
@@ -32,7 +36,35 @@ class plotdata:
     if (len(self.serieses) == 0):
       print("There are no series to plot")
       return False
-    # TODO
+
+    # set up Kavrayskiy VII map projection
+    # use low resolution coastlines
+    m = Basemap(projection='kav7',resolution='l')
+    # draw coastlines, country boundaries, fill continents.
+    m.drawcoastlines(linewidth=0.25)
+    m.drawcountries(linewidth=0.25)
+    m.fillcontinents(color='grey',lake_color='aqua')
+    # draw the edge of the map projection region (the projection limb)
+    m.drawmapboundary(fill_color='aqua')
+    # draw lat/lon grid lines every 30 degrees.
+    #m.drawmeridians(np.arange(0,360,30))
+    #m.drawparallels(np.arange(-90,90,30))
+    # TODO: draw each series
+
+    # Get the name of the graph
+    title = ""
+    if (len(self.serieses) > 3):
+      title += str(len(self.serieses)) + " series"
+    else:
+      title += "hashtags "
+      comma = ""
+      for series in self.serieses:
+        title += comma + series["name"]
+        comma = ", "
+    title += " plotted for spread"
+    plt.title(title)
+
+    self.m = m
     self.mapIsDrawn = True
     return True
 
