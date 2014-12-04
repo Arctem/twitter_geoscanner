@@ -20,7 +20,10 @@ class Analysis:
               "type": 1,
               "version": 1}
     }
+    # number of top trending hours to look for in self.tagTrendScoreAllTimes()
     self.topTrendScoreCount = 100
+    # number of data points to plot with Plotdata
+    self.plotcount = 100
 
   # If the stored hashtag rank_type, rank_version, and last_tweet_time are all
   #   the same, and there are at least as many stored top hourly rankings as
@@ -189,14 +192,12 @@ class Analysis:
     self.connection.sqlCall(first_tweet, {})
     first_time = [x for x in self.connection.cursor][0][0]
     start_time = first_time / ten_minutes * ten_minutes
-    print('Start time: {}'.format(start_time))
 
     self.connection.sqlCall(last_tweet, {})
     last_time = [x for x in self.connection.cursor][0][0]
     end_time = (last_time / ten_minutes + 1) * ten_minutes
-    print('End time: {}'.format(end_time))
 
-    count_range = "SELECT COUNT(*) FROM `tweets` WHERE (`time`>%(start)s AND `time`<%(end)s);"
+    count_range = "SELECT COUNT(*) FROM `tweets` WHERE (`time`>%(start)s AND `time`<%(end)s)"
     results = []
     start = None
     ranges = []
@@ -280,6 +281,45 @@ class Analysis:
         "score": numpy.mean(scores)
         })
     retval.sort(key=lambda o: -o["score"])
+    return retval
+
+  # Organize the series data acceptable to Plotdata.addSeries().
+  # Only retrieve the one series at a time to prevent overloading the mysql server.
+  # @param series Data from self.getTimeRangeByTopScore(), or the first series
+  #   from self.getTimeRangeByTopScore() if None
+  # @return the data, formatted for Plotdata.addSeries().
+  def getSeriesToPlot(self, hashtag, series=None):
+    retval = []
+    hashtagName = self.connection.hashtagToName(hashtag)
+
+    if (series == None):
+      trendRanges = self.getTimeRangeByTopScore(hashtag)
+      series = trendRanges[0]
+
+    st = self.dbtime.toDBTime(series["starttime"])
+    et = self.dbtime.toDBTime(series["endtime"] + timedelta(0,3600))
+    tweets = self.connection.selectTweets(
+      startTime=st,
+      endTime=et,
+      hashtagIDs=[hashtag])
+
+    pc = self.plotcount
+    if (len(tweets) > pc):
+      tweets2 = []
+      interval = float(len(tweets)) / (pc+1.0)
+      for i in range(pc):
+        index = int( interval * i )
+        tweets2.append(tweets[index])
+      tweets = tweets2
+    retval.append({
+      "starttime": st,
+      "endtime": et,
+      "data": [tweet[:3] for tweet in tweets],
+      "hashtag": {
+        "name": hashtagName,
+        "id": hashtag
+        }
+      })
     return retval
 
 def main():

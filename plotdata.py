@@ -18,14 +18,16 @@ class Plotdata:
   # add a time-location series to be plotted
   # should be in the format
   # {
-  #   "data"   : [
-  #               [time (int), latitude (double), longitude (double)],
-  #               ...
-  #              ]
-  #   "hashtag": {
-  #                "name": hashtag name,
-  #                "id": hashtag id,
-  #              }
+  #   "starttime": dbtime
+  #   "endtime"  : dbtime
+  #   "data"     : [
+  #                 (time (int), latitude (double), longitude (double)),
+  #                 ...
+  #                ]
+  #   "hashtag"  : {
+  #                  "name": hashtag name,
+  #                  "id": hashtag id,
+  #                }
   # }
   def addSeries(self, series):
     if (len(series) == 0):
