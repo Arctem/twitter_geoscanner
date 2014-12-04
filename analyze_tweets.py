@@ -6,7 +6,7 @@ import pprint, json
 import time
 import re
 import db
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import numpy
 
 
@@ -203,22 +203,40 @@ class Analysis:
     ranges = []
     for t in range(start_time, end_time, ten_minutes):
       self.connection.sqlCall(count_range, {'start': t, 'end': t + ten_minutes})
-      results.append([x for x in self.connection.cursor][0][0])
+      results.append((t, [x for x in self.connection.cursor][0][0]))
       
-      if results[-1] != 0:
+      if results[-1][1] != 0:
         if start is None:
           start = t
-        else:
-          if start is not None:
-            ranges.append((start, t, t - start))
-            start = None
-            print(ranges[-1])
+      else:
+        if start is not None:
+          ranges.append((start, t, t - start))
+          start = None
+          print(ranges[-1])
             
     #print(t, results[-1])
 
     #print(results) #number of tweets per 10 minutes
     #print(ranges)
-    return ranges
+    return results, ranges
+
+  def make_csv(self, filename):
+    results, ranges = self.get_valid_ranges()
+    ranges = sorted(ranges, key=lambda r: r[2])
+    print(ranges[-10:])
+
+    nov_one = datetime(2014, 11, 1)
+    out = open(filename, 'w')
+    for r in results:
+      time = r[0]
+      count = r[1]
+
+      time = nov_one + timedelta(seconds=time)
+      print(time)
+
+      out.write('{},{}\n'.format(time, count))
+    out.close()
+  
 
   ########################## TREND SET ANALYSIS ################################
 
@@ -324,9 +342,11 @@ class Analysis:
 
 def main():
   analysis = Analysis()
-  ranges = analysis.get_valid_ranges()
-  ranges = sorted(ranges, key=lambda r: r[2])
-  print(ranges)
+  results, ranges = analysis.get_valid_ranges()
+
+  ranges = sorted(ranges, key=lambda k: k[2])
+  print(ranges[:5], ranges[-5:])
+
 
 
 if __name__ == '__main__':
