@@ -57,7 +57,9 @@ class Plotdata:
       lons = [datapoint[2] for datapoint in series["data"]]
       lats = [datapoint[1] for datapoint in series["data"]]
       x, y = m(lons, lats)
-      m.scatter(x,y,30,marker='o',color='k')
+      for i in range(len(x)):
+        r = min( 1.0 / len(x) * i ,1.0)
+        m.scatter([x[i]],[y[i]],30,marker='o',color=(r,0.0,0.0))
 
     # Get the name of the graph
     title = ""
@@ -109,10 +111,15 @@ def main():
   greatestWeek = dbtime.getGreatestWeek(hour, dayOfWeek)
   top = 100
 
-  orderedPairs = []
-  series = analyzer.getSeriesToPlot(hashtag)
-  plotdata.addSeries(series)
-  plotdata.saveMap("/home/password/public_html/foo.png")
+  for hashtagData in analyzer.getTopHashes():
+    hashtag = hashtagData[0]
+    orderedPairs = []
+    series = analyzer.getSeriesToPlot(hashtag)
+    plotdata.serieses = []
+    plotdata.addSeries(series)
+    plotdata.saveMap("/home/password/public_html/"+ series["hashtag"]["name"] + ".png")
+    print "plotted " + series["hashtag"]["name"]
+    print ""
 
 if __name__ == '__main__':
   main()
