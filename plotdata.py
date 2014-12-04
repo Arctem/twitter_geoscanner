@@ -3,7 +3,7 @@ import matplotlib.pyplot
 import numpy
 
 # Example usage:
-class plotdata:
+class Plotdata:
   serieses
   mapIsDrawn
   plt # plot
@@ -18,11 +18,14 @@ class plotdata:
   # add a time-location series to be plotted
   # should be in the format
   # {
-  #   name: hashtag,
-  #   data: [
-  #           [time (int), latitude (double), longitude (double)],
-  #           ...
-  #         ]
+  #   "data"   : [
+  #               [time (int), latitude (double), longitude (double)],
+  #               ...
+  #              ]
+  #   "hashtag": {
+  #                "name": hashtag name,
+  #                "id": hashtag id,
+  #              }
   # }
   def addSeries(self, series):
     if (len(series) == 0):

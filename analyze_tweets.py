@@ -6,7 +6,7 @@ import pprint, json
 import time
 import re
 import db
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy
 
 
@@ -67,6 +67,7 @@ class Analysis:
 
   # Get the tagTrendScore for all hour, days, and weeks
   # @param hashtag The hashtag id
+  # @return The trend scores, in the form {dt: rank}
   def tagTrendScoreAllTimes(self, hashtag, ranking="idf"):
     trendScores = {}
 
@@ -104,19 +105,38 @@ class Analysis:
 
     return trendScores
 
+  # returns the most popular hashes as a list of [id,name,count]
   def getTopHashes(self, limit=100):
-    self.connection.sqlCall("select * from hashtag_codes order by count desc limit "+limit+";")
+    topHashes = []
+    self.connection.sqlCall("select `id`,`name`,`count` from hashtag_codes order by count desc limit %(limit)s",
+      {"limit":limit})
     for row in self.connection.cursor:
-      topHashes.append(row[0:2])
+      topHashes.append(row)
     return topHashes
 
-  def tagTrendScoresTopHashes():
-     return tagTrendScores
-
+  # loads the data to be plotted, given a hashtag and time period
+  # @param hashtag ID of the hashtag to load
+  # @param timePeriod tuple of time range to load for (dbtime_start, dbtime_end)
+  # @return the Data to plot, in the format required for Plotdata.addSeries
   def getDataToPlot(hashtag, timePeriod):
-    return dataToPlot
+    series = {
+      "hashtag": {"id":hashtag,"name":""},
+      "data": []
+      }
+    
+    # get the name of the given hashtag id
+    query = "SELECT `name` FROM `hashtag_codes` WHERE `id`=%(id)s LIMIT 1"
+    data = {"id":hashtag}
+    self.connection.sqlCall(query, data)
+    for row in self.connection.cursor:
+      series["hashtag"]["name"] = row[0]
 
-
+    # get the tweets
+    tweets = self.connection.selectTweets(
+      startTime=timePeriod[0], endTime=timePeriod[1], hashtagIDs=[hashtag])
+    tweetData = []
+    for tweet in tweets:
+      tweetData.append(tweet[:3]) # only want the time, lat, and lon
 
   # We want to score tweets based on the following formula:
   # tagTrendScore(hashtag, hour, day, week) =
@@ -199,6 +219,68 @@ class Analysis:
     #print(ranges)
     return ranges
 
+  ########################## TREND SET ANALYSIS ################################
+
+  # find the sets of consecutive times for the given list
+  # @param orderedList A list of [datetime, ...] lists, ordered by the datetime
+  # @return A list of lists, such that the second order of lists contain only
+  #   lists with consecutive times
+  def getConsecutiveListsByTime(self, orderedList):
+    retval = []
+    lastPair = None
+    consecutive = False
+    for pair in orderedList:
+      if lastPair == None:
+        lastPair = pair
+        continue
+      if (lastPair[0] + timedelta(0,3660) > pair[0]):
+        if not consecutive:
+          retval.append([])
+        consecutive = True
+        retval[len(retval)-1].append(lastPair)
+      else:
+        consecutive = False
+        retval.append([lastPair])
+      lastPair = pair
+    if consecutive:
+      retval[len(retval)-1].append(lastPair)
+    return retval
+
+  # For the given list, rank them by score in descending order and return the
+  #   top self.topTrendScoreCount of them.
+  # @param pairs The pairs to analyze (should be in the form {dt:rank})
+  # @return the pairs in form [dt, score], ranked by score in reverse order
+  def getTopRankings(self, pairs):
+    orderedPairs = []
+    top = self.topTrendScoreCount
+    orderedByScore = sorted(pairs, key=pairs.get, reverse=True)[:top]
+    orderedPairs = [[date, pairs[date]] for date in orderedByScore]
+    return orderedPairs
+
+  # Get the time range for the top scoring times for the given hashtag.
+  # @param hashtag The hashtag id to analyze
+  # @return a list of {starttime: dt, endtime: dt, data: original score data,
+  #   score: average score for time range},
+  #   ordered by score
+  def getTimeRangeByTopScore(self, hashtag):
+    allTrendScores = self.tagTrendScoreAllTimes(hashtag)
+    orderedPairs = self.getTopRankings(allTrendScores)
+    orderedPairs.sort(key=lambda o: o[0])
+    consecutivePairsSet = self.getConsecutiveListsByTime(orderedPairs)
+
+    # format data
+    retval = []
+    for consecutivePairs in consecutivePairsSet:
+      count = len(consecutivePairs)
+      scores = [pair[1] for pair in consecutivePairs]
+      retval.append({
+        "starttime": consecutivePairs[0][0],
+        "endtime": consecutivePairs[count-1][0],
+        "data": consecutivePairs,
+        "score": numpy.mean(scores)
+        })
+    retval.sort(key=lambda o: -o["score"])
+    return retval
 
 def main():
   analysis = Analysis()
