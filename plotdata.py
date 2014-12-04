@@ -8,6 +8,9 @@ import db
 # Example usage:
 class Plotdata:
   def __init__(self):
+    self.clear()
+
+  def clear(self):
     self.serieses = []
     self.mapIsDrawn = False
     self.m = None #map
@@ -101,7 +104,6 @@ class Plotdata:
 
 def main():
   analyzer = Analysis()
-  plotdata = Plotdata()
   dbtime = analyzer.dbtime
   connection = analyzer.connection
 
@@ -111,15 +113,20 @@ def main():
   greatestWeek = dbtime.getGreatestWeek(hour, dayOfWeek)
   top = 100
 
-  for hashtagData in analyzer.getTopHashes():
-    hashtag = hashtagData[0]
-    orderedPairs = []
-    series = analyzer.getSeriesToPlot(hashtag)
-    plotdata.serieses = []
-    plotdata.addSeries(series)
-    plotdata.saveMap("/home/password/public_html/"+ series["hashtag"]["name"] + ".png")
-    print "plotted " + series["hashtag"]["name"]
-    print ""
+  #for hashtagData in analyzer.getTopHashes():
+    #hashtag = hashtagData[0]
+  hashtag = 88471 # followmecam
+  #hashtag = 17 # Job
+  #hashtag = 34 # Jobs
+  #hashtag = 21 # MTVStars
+  #hashtag = 132 # TweetMyJobs 
+  orderedPairs = []
+  series = analyzer.getSeriesToPlot(hashtag)
+  plotdata = Plotdata()
+  plotdata.addSeries(series)
+  plotdata.saveMap("/home/password/public_html/"+ series["hashtag"]["name"] + ".png")
+  print "plotted " + series["hashtag"]["name"]
+  print ""
 
 if __name__ == '__main__':
   main()
