@@ -15,18 +15,93 @@ class Analysis:
   def __init__(self):
     self.connection  = db.Connection()
     self.dbtime = db.dbTime(self.connection)
+    self.rank_types_and_versions = {
+      "idf": {"full_name": "inverse document frequency",
+              "type": 1,
+              "version": 1}
+    }
+    self.topTrendScoreCount = 100
+
+  # If the stored hashtag rank_type, rank_version, and last_tweet_time are all
+  #   the same, and there are at least as many stored top hourly rankings as
+  #   self.topTrendScoreCount, then the rankings can be loaded instead of having
+  #   to be re-computed.
+  # @param hashtag The hashtag id
+  # @param ranking The name of the ranking (key in self.rank_types_and_versions)
+  # @return List of rankings, as pairs of [rank,dbtime], in descending rank order
+  #   returns the whole row, instead, if getWholeRow is True
+  def _loadPrecomputedTrendScores(self, hashtag, ranking, getWholeRow = False):
+    rank_t_v = self.rank_types_and_versions[ranking]
+    last_tweet_time = self.dbtime.getLastTime()
+    self.connection.sqlCall("SELECT `rank_type`,`rank_version`,`last_tweet_time`,`rankings` FROM `hashtag_codes` WHERE `id`='%(hashtag)s'",
+                            {"hashtag":hashtag})
+    for row in self.connection.cursor:
+      if (row[3] == None or
+          row[0] & rank_t_v["type"] == 0 or
+          row[1] != rank_t_v["version"] or
+          row[2] != last_tweet_time):
+        return None
+      rankings = json.loads(row[3])[ranking]
+      if (len(rankings) < self.topTrendScoreCount):
+        return None
+      return rankings
+    return None
+
+  def _savePrecomputedTrendScores(self, hashtag, ranking, cachedTrendScores):
+    r_type = self.rank_types_and_versions[ranking]["type"]
+    r_version = self.rank_types_and_versions[ranking]["version"]
+    last_tweet_time = self.dbtime.getLastTime()
+    rankings = {ranking:cachedTrendScores}
+    row = self._loadPrecomputedTrendScores(hashtag, ranking, getWholeRow=True)
+    if (row != None and
+      row[3] != None and
+      row[1] == r_version and
+      row[2] == last_tweet_time):
+      r_type = row[0] | r_type
+      rankings = json.loads(row[3])
+      rankings[ranking] = cachedTrendScores
+    s_rankings = json.dumps(rankings)
+    query = "UPDATE `hashtag_codes` SET `rank_type`=%(rt)s,`rank_version`=%(rv)s,`last_tweet_time`=%(ltt)s,`rankings`=%(r)s WHERE `id`='%(h)s'"
+    data = {"rt":r_type, "rv":r_version, "ltt":last_tweet_time, "r":s_rankings, "h":hashtag}
+    self.connection.sqlCall(query,data)
 
   # Get the tagTrendScore for all hour, days, and weeks
-  def tagTrendScoreAllTimes(self, hashtag):
+  # @param hashtag The hashtag id
+  def tagTrendScoreAllTimes(self, hashtag, ranking="idf"):
     trendScores = {}
+
+    # try to load precomputed trend scores
+    cachedTrendScores = self._loadPrecomputedTrendScores(hashtag, ranking)
+    if (cachedTrendScores != None):
+      print("Loaded from database!")
+      for rank in cachedTrendScores:
+        dt = self.dbtime.toRealTime(rank[0])
+        trendScores[dt] = rank[1]
+      return trendScores
+    cachedTrendScores = []
+
+    # calculate trend scores fresh from database
+    lastPercent = 1.1
     for hour in range(24):
+      if (hour / 2.4 > lastPercent):
+        print(str( int(lastPercent) * 10 ) + "%")
+        lastPercent += 1
       for dayOfWeek in range(7):
         greatestWeek = self.dbtime.getGreatestWeek(hour,dayOfWeek)
         for week in range(greatestWeek):
-          dt = self.dbtime.toRealTime(self.dbtime.getDBTime(hour, dayOfWeek, week))
-          iso = dt.isoformat()
+          dbdt = self.dbtime.getDBTime(hour, dayOfWeek, week)
+          dt = self.dbtime.toRealTime(dbdt)
           score = self.tagTrendScore(hashtag, hour, dayOfWeek, week)
-          trendScores[iso] = score
+          trendScores[dt] = score
+          cachedTrendScores.append([dbdt, score])
+
+    # cache top trend scores in the db
+    orderedByScore = sorted(cachedTrendScores, key=lambda o: -o[1])[:self.topTrendScoreCount]
+    cachedTrendScores2 = []
+    for pair in orderedByScore:
+      cachedTrendScores2.append(pair)
+    self._savePrecomputedTrendScores(hashtag, ranking, cachedTrendScores2)
+
     return trendScores
 
   def getTopHashes(self, limit=100):
