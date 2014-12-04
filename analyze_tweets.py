@@ -311,7 +311,7 @@ class Analysis:
         index = int( interval * i )
         tweets2.append(tweets[index])
       tweets = tweets2
-    retval.append({
+    retval = {
       "starttime": st,
       "endtime": et,
       "data": [tweet[:3] for tweet in tweets],
@@ -319,7 +319,7 @@ class Analysis:
         "name": hashtagName,
         "id": hashtag
         }
-      })
+      }
     return retval
 
 def main():

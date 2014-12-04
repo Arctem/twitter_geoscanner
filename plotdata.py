@@ -1,19 +1,16 @@
 from mpl_toolkits.basemap import Basemap
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import numpy
+from analyze_tweets import Analysis
+from datetime import datetime, timedelta
+import db
 
 # Example usage:
 class Plotdata:
-  serieses
-  mapIsDrawn
-  plt # plot
-  m # map
-  
   def __init__(self):
     self.serieses = []
     self.mapIsDrawn = False
-    self.plt = None
-    self.m = None
+    self.m = None #map
 
   # add a time-location series to be plotted
   # should be in the format
@@ -44,17 +41,23 @@ class Plotdata:
 
     # set up Kavrayskiy VII map projection
     # use low resolution coastlines
-    m = Basemap(projection='kav7',resolution='l')
+    m = Basemap(projection='kav7',lon_0=0,resolution='l')
     # draw coastlines, country boundaries, fill continents.
     m.drawcoastlines(linewidth=0.25)
     m.drawcountries(linewidth=0.25)
-    m.fillcontinents(color='grey',lake_color='aqua')
+    #m.fillcontinents(color='grey',lake_color='aqua')
     # draw the edge of the map projection region (the projection limb)
     m.drawmapboundary(fill_color='aqua')
     # draw lat/lon grid lines every 30 degrees.
     #m.drawmeridians(np.arange(0,360,30))
     #m.drawparallels(np.arange(-90,90,30))
-    # TODO: draw each series
+    
+    # draw each series
+    for series in self.serieses:
+      lons = [datapoint[2] for datapoint in series["data"]]
+      lats = [datapoint[1] for datapoint in series["data"]]
+      x, y = m(lons, lats)
+      m.scatter(x,y,30,marker='o',color='k')
 
     # Get the name of the graph
     title = ""
@@ -62,10 +65,8 @@ class Plotdata:
       title += str(len(self.serieses)) + " series"
     else:
       title += "hashtags "
-      comma = ""
-      for series in self.serieses:
-        title += comma + series["name"]
-        comma = ", "
+      seriesNames = [series["hashtag"]["name"] for series in self.serieses]
+      title += ", ".join(seriesNames)
     title += " plotted for spread"
     plt.title(title)
 
@@ -95,3 +96,23 @@ class Plotdata:
     fig = plt.gcf()
     fig.set_size_inches(18.5,10.5)
     fig.savefig(filepath)
+
+def main():
+  analyzer = Analysis()
+  plotdata = Plotdata()
+  dbtime = analyzer.dbtime
+  connection = analyzer.connection
+
+  hashtag = 34 #jobs
+  hour = 19
+  dayOfWeek = 0
+  greatestWeek = dbtime.getGreatestWeek(hour, dayOfWeek)
+  top = 100
+
+  orderedPairs = []
+  series = analyzer.getSeriesToPlot(hashtag)
+  plotdata.addSeries(series)
+  plotdata.saveMap("/home/password/public_html/foo.png")
+
+if __name__ == '__main__':
+  main()
