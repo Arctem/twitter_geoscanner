@@ -324,8 +324,9 @@ class Analysis:
 
 def main():
   analysis = Analysis()
-  ranges = analysis.get_valid_ranges()
-  ranges = sorted(ranges, key=lambda r: r[2])
+  results, ranges = analysis.get_valid_ranges()
+
+  ranges = sorted(ranges, key=lambda k: k[2], reverse=True)
   print(ranges)
 
 
