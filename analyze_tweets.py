@@ -344,8 +344,8 @@ def main():
   analysis = Analysis()
   results, ranges = analysis.get_valid_ranges()
 
-  ranges = sorted(ranges, key=lambda k: k[2])
-  print(ranges[:5], ranges[-5:])
+  ranges = sorted(ranges, key=lambda k: k[2], reverse=True)
+  print(ranges)
 
 
 
