@@ -254,7 +254,21 @@ class Connection:
   # @return The set of rows from the tweets table that matches the given query.
   def selectTweets(self, startTime=-1, endTime=-1, hashtagIDs=[], limit=-1, order="`time` ASC"):
     self.__performTweetQuery(False, startTime, endTime, hashtagIDs, limit, order)
-    return self.cursor.fetchall()
+    retval = []
+    for row in self.cursor:
+      retval.append(row)
+    return retval
+
+  # for the given hashtag id, returns the name
+  # @param hashtag The hashtag ID to look up
+  # @return The name of the tag, or None if it can't be found
+  def hashtagToName(self, hashtag):
+    query = "SELECT `name` FROM `hashtag_codes` WHERE `id`=%(id)s"
+    data = {"id": hashtag}
+    self.sqlCall(query, data)
+    for row in self.cursor:
+      return row[0]
+    return None
 
   # Get the number of tweets that match the given criteria
   # For parameters, see {@link selectTweets}
