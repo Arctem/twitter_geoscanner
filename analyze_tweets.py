@@ -205,14 +205,14 @@ class Analysis:
       self.connection.sqlCall(count_range, {'start': t, 'end': t + ten_minutes})
       results.append((t, [x for x in self.connection.cursor][0][0]))
       
-      if results[-1] != 0:
+      if results[-1][1] != 0:
         if start is None:
           start = t
-        else:
-          if start is not None:
-            ranges.append((start, t, t - start))
-            start = None
-            print(ranges[-1])
+      else:
+        if start is not None:
+          ranges.append((start, t, t - start))
+          start = None
+          print(ranges[-1])
             
     #print(t, results[-1])
 
@@ -342,7 +342,11 @@ class Analysis:
 
 def main():
   analysis = Analysis()
-  analysis.make_csv('data.csv')
+  results, ranges = analysis.get_valid_ranges()
+
+  ranges = sorted(ranges, key=lambda k: k[2])
+  print(ranges[:5], ranges[-5:])
+
 
 
 if __name__ == '__main__':
