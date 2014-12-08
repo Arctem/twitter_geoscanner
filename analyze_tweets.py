@@ -112,7 +112,7 @@ class Analysis:
     cachedTrendScores2 = []
     for pair in orderedByScore:
       cachedTrendScores2.append(pair)
-    #self._savePrecomputedTrendScores(hashtag, ranking, cachedTrendScores2)
+    self._savePrecomputedTrendScores(hashtag, ranking, cachedTrendScores2)
 
     return trendScores
 
