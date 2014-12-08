@@ -270,6 +270,17 @@ class Connection:
       return row[0]
     return None
 
+  # for the given hashtag name, returns the id
+  # @param hashtag The hashtag ID to look up
+  # @return The id of the tag, or None if it can't be found
+  def hashtagNameToID(self, hashtagName):
+    query = "SELECT `id` FROM `hashtag_codes` WHERE `name`=%(name)s"
+    data = {"name": hashtagName}
+    self.sqlCall(query, data)
+    for row in self.cursor:
+      return row[0]
+    return None
+
   # Get the number of tweets that match the given criteria
   # For parameters, see {@link selectTweets}
   def countTweets(self, startTime=-1, endTime=-1, hashtagIDs=[], limit=-1):

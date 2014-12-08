@@ -18,7 +18,10 @@ class Analysis:
     self.rank_types_and_versions = {
       "idf": {"full_name": "inverse document frequency",
               "type": 1,
-              "version": 1}
+              "version": 1},
+      "linear" : {"full_name": "greater than linear growth",
+                  "type": 2,
+                  "version": 1}
     }
     # number of top trending hours to look for in self.tagTrendScoreAllTimes()
     self.topTrendScoreCount = 100
@@ -50,7 +53,7 @@ class Analysis:
       return rankings
     return None
 
-  def _savePrecomputedTrendScores(self, hashtag, ranking, cachedTrendScores):
+  def _savePrecomputedTrendScores(self, hashtag, ranking):
     r_type = self.rank_types_and_versions[ranking]["type"]
     r_version = self.rank_types_and_versions[ranking]["version"]
     last_tweet_time = self.dbtime.getLastTime()
@@ -70,7 +73,7 @@ class Analysis:
 
   # Get the tagTrendScore for all hour, days, and weeks
   # @param hashtag The hashtag id
-  # @return The trend scores, in the form {dt: rank}
+  # @return The trend scores, in the form {datetime: [rank, datetime2]}
   def tagTrendScoreAllTimes(self, hashtag, ranking="idf"):
     trendScores = {}
 
@@ -78,33 +81,38 @@ class Analysis:
     cachedTrendScores = self._loadPrecomputedTrendScores(hashtag, ranking)
     if (cachedTrendScores != None):
       print("Loaded from database!")
-      for rank in cachedTrendScores:
-        dt = self.dbtime.toRealTime(rank[0])
-        trendScores[dt] = rank[1]
+      for pair in cachedTrendScores:
+        dt = self.dbtime.toRealTime(pair[0])
+        if pair[1] is list:
+          trendScores[dt] = pair[1]
+        else:
+          trendScores[dt] = [pair[1]]
       return trendScores
     cachedTrendScores = []
 
     # calculate trend scores fresh from database
     lastPercent = 1.1
-    for hour in range(24):
-      if (hour / 2.4 > lastPercent):
-        print(str( int(lastPercent) * 10 ) + "%")
-        lastPercent += 1
-      for dayOfWeek in range(7):
-        greatestWeek = self.dbtime.getGreatestWeek(hour,dayOfWeek)
-        for week in range(greatestWeek):
-          dbdt = self.dbtime.getDBTime(hour, dayOfWeek, week)
-          dt = self.dbtime.toRealTime(dbdt)
-          score = self.tagTrendScore(hashtag, hour, dayOfWeek, week)
-          trendScores[dt] = score
-          cachedTrendScores.append([dbdt, score])
+    if ranking is "idf":
+      for hour in range(24):
+        if (hour / 2.4 > lastPercent):
+          print(str( int(lastPercent) * 10 ) + "%")
+          lastPercent += 1
+        for dayOfWeek in range(7):
+          greatestWeek = self.dbtime.getGreatestWeek(hour,dayOfWeek)
+          for week in range(greatestWeek):
+            dbdt = self.dbtime.getDBTime(hour, dayOfWeek, week)
+            score = self.tagTrendScore(hashtag, hour, dayOfWeek, week)
+            trendScores[self.dbtime.toRealTime(dbdt)] = [score]
+            cachedTrendScores.append([dbdt, [score]])
+    elif ranking is "linear":
+      pass # TODO
 
     # cache top trend scores in the db
-    orderedByScore = sorted(cachedTrendScores, key=lambda o: -o[1])[:self.topTrendScoreCount]
+    orderedByScore = sorted(cachedTrendScores, key=lambda o: -o[1][0])[:self.topTrendScoreCount]
     cachedTrendScores2 = []
     for pair in orderedByScore:
       cachedTrendScores2.append(pair)
-    self._savePrecomputedTrendScores(hashtag, ranking, cachedTrendScores2)
+    #self._savePrecomputedTrendScores(hashtag, ranking, cachedTrendScores2)
 
     return trendScores
 
@@ -153,6 +161,9 @@ class Analysis:
     if (occurancesStandardDeviation == 0):
       return 0
     return numOccurances - (occurancesMean / occurancesStandardDeviation)
+
+  def tagLinearScore(self, hashtag, hour, dayOfWeek, week):
+    pass # TODO
 
   # @return the number of tags that occur within the given time period that contain
   #   the given hashtag, or -1 if the time parameters are out of bounds
@@ -254,7 +265,7 @@ class Analysis:
   def getTopRankings(self, pairs):
     orderedPairs = []
     top = self.topTrendScoreCount
-    orderedByScore = sorted(pairs, key=pairs.get, reverse=True)[:top]
+    orderedByScore = sorted(pairs, key=(lambda key : pairs[key][0]), reverse=True)[:top]
     orderedPairs = [[date, pairs[date]] for date in orderedByScore]
     return orderedPairs
 
@@ -263,23 +274,34 @@ class Analysis:
   # @return a list of {starttime: dt, endtime: dt, data: original score data,
   #   score: average score for time range},
   #   ordered by score
-  def getTimeRangeByTopScore(self, hashtag):
-    allTrendScores = self.tagTrendScoreAllTimes(hashtag)
+  def getTimeRangeByTopScore(self, hashtag, ranking):
+    allTrendScores = self.tagTrendScoreAllTimes(hashtag, ranking)
     orderedPairs = self.getTopRankings(allTrendScores)
     orderedPairs.sort(key=lambda o: o[0])
-    consecutivePairsSet = self.getConsecutiveListsByTime(orderedPairs)
-
-    # format data
     retval = []
-    for consecutivePairs in consecutivePairsSet:
-      count = len(consecutivePairs)
-      scores = [pair[1] for pair in consecutivePairs]
-      retval.append({
-        "starttime": consecutivePairs[0][0],
-        "endtime": consecutivePairs[count-1][0],
-        "data": consecutivePairs,
-        "score": numpy.mean(scores)
-        })
+
+    if ranking is "idf":
+      consecutivePairsSet = self.getConsecutiveListsByTime(orderedPairs)
+      # format data
+      for consecutivePairs in consecutivePairsSet:
+        count = len(consecutivePairs)
+        scores = [pair[1][0] for pair in consecutivePairs]
+        retval.append({
+          "starttime": consecutivePairs[0][0],
+          "endtime": consecutivePairs[count-1][0],
+          "data": consecutivePairs,
+          "score": numpy.mean(scores)
+          })
+    elif ranking is "linear":
+      # linear is already grouped together, no need to clump by time
+      for pair in orderedPairs:
+        retval.append({
+          "starttime": pair[0],
+          "endtime": pair[1][1],
+          "data": pair,
+          "score": pair[1][0]
+          })
+
     retval.sort(key=lambda o: -o["score"])
     return retval
 
@@ -288,12 +310,12 @@ class Analysis:
   # @param series Data from self.getTimeRangeByTopScore(), or the first series
   #   from self.getTimeRangeByTopScore() if None
   # @return the data, formatted for Plotdata.addSeries().
-  def getSeriesToPlot(self, hashtag, series=None):
+  def getSeriesToPlot(self, hashtag, series=None, ranking="idf"):
     retval = []
     hashtagName = self.connection.hashtagToName(hashtag)
 
     if (series == None):
-      trendRanges = self.getTimeRangeByTopScore(hashtag)
+      trendRanges = self.getTimeRangeByTopScore(hashtag, ranking)
       series = trendRanges[0]
 
     st = self.dbtime.toDBTime(series["starttime"])

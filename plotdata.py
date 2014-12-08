@@ -4,6 +4,8 @@ import numpy
 from analyze_tweets import Analysis
 from datetime import datetime, timedelta
 import db
+import sys
+import argparse
 
 # Example usage:
 class Plotdata:
@@ -102,24 +104,29 @@ class Plotdata:
     fig.set_size_inches(18.5,10.5)
     fig.savefig(filepath)
 
-def main():
+def main(args):
   analyzer = Analysis()
   dbtime = analyzer.dbtime
   connection = analyzer.connection
 
-  hashtag = 34 #jobs
+  hashtag = None
+  hashtagName = None
+  if (args.hashtagID is None):
+    hashtag = connection.hashtagNameToID(args.hashtagName)
+    hashtagName = args.hashtagName
+  else:
+    hashtagName = connection.hashtagToName(int(args.hashtagID))
+    hashtag = int(args.hashtagID)
+  if (hashtag is None):
+    print "Hashtag not found"
+    return 1
+  print str(hashtag) + ": " + str(hashtagName)
+
   hour = 19
   dayOfWeek = 0
   greatestWeek = dbtime.getGreatestWeek(hour, dayOfWeek)
   top = 100
 
-  #for hashtagData in analyzer.getTopHashes():
-    #hashtag = hashtagData[0]
-  hashtag = 88471 # followmecam
-  #hashtag = 17 # Job
-  #hashtag = 34 # Jobs
-  #hashtag = 21 # MTVStars
-  #hashtag = 132 # TweetMyJobs 
   orderedPairs = []
   series = analyzer.getSeriesToPlot(hashtag)
   plotdata = Plotdata()
@@ -129,4 +136,21 @@ def main():
   print ""
 
 if __name__ == '__main__':
-  main()
+  parser = argparse.ArgumentParser(description='Plot a graph of a hashtag\'s geographic spread.')
+  parser.add_argument('--name', dest='hashtagName', type=str, default=None,
+                      nargs='?', help='Specify the hashtag by name')
+  parser.add_argument('--id', dest='hashtagID', default=None,
+                      help='Specify the hashtag by id')
+  parser.add_argument('--printTags', dest='printTags', default=False,
+                      action='store_const', const=True,
+                      help='Print the top 20 hashtags by populariy')
+  args = parser.parse_args()
+
+  if args.printTags:
+    analyzer = Analysis()
+    topHashNames = [hashtagData[1] for hashtagData in analyzer.getTopHashes(20)]
+    print topHashNames
+  elif (args.hashtagID is not None or args.hashtagName is not None):
+    main(args)
+  else:
+    args.print_help()
