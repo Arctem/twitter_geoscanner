@@ -48,11 +48,11 @@ class Plotdata:
     # use low resolution coastlines
     m = Basemap(projection='kav7',lon_0=0,resolution='l')
     # draw coastlines, country boundaries, fill continents.
-    m.drawcoastlines(linewidth=0.25)
-    m.drawcountries(linewidth=0.25)
-    #m.fillcontinents(color='grey',lake_color='aqua')
+    m.drawcoastlines(linewidth=0.25,zorder=10)
+    m.drawcountries(linewidth=0.25,zorder=10)
+    m.fillcontinents(color='grey',lake_color='aqua',zorder=20)
     # draw the edge of the map projection region (the projection limb)
-    m.drawmapboundary(fill_color='aqua')
+    m.drawmapboundary(fill_color='aqua',zorder=5)
     # draw lat/lon grid lines every 30 degrees.
     #m.drawmeridians(np.arange(0,360,30))
     #m.drawparallels(np.arange(-90,90,30))
@@ -64,7 +64,7 @@ class Plotdata:
       x, y = m(lons, lats)
       for i in range(len(x)):
         r = min( 1.0 / len(x) * i ,1.0)
-        m.scatter([x[i]],[y[i]],30,marker='o',color=(r,0.0,0.0))
+        m.scatter([x[i]],[y[i]],30,marker='o',color=(r,0.0,0.0),zorder=30)
 
     # Get the name of the graph
     title = ""
@@ -128,7 +128,7 @@ def main(args):
   top = 100
 
   orderedPairs = []
-  series = analyzer.getSeriesToPlot(hashtag)
+  series = analyzer.getSeriesToPlot(hashtag, ranking=args.ranking)
   plotdata = Plotdata()
   plotdata.addSeries(series)
   plotdata.saveMap("/home/password/public_html/"+ series["hashtag"]["name"] + ".png")
@@ -144,6 +144,8 @@ if __name__ == '__main__':
   parser.add_argument('--printTags', dest='printTags', default=False,
                       action='store_const', const=True,
                       help='Print the top 20 hashtags by populariy')
+  parser.add_argument('--ranking', dest='ranking', default='idf',
+                      help='Choose a ranking to sort by. One of idf or linear.')
   args = parser.parse_args()
 
   if args.printTags:
