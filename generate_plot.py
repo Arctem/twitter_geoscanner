@@ -30,7 +30,7 @@ class Hash(Base):
   tweet_id = Column(Integer, ForeignKey('tweets.id'))
   tweet = relationship("Tweet", backref=backref('hashes', order_by=id))
 
-def main():
+def chart_top10():
   session = Session()
   top10 = session.query(Hash.tag, func.count(Hash.id)).group_by(Hash.tag).order_by(desc(func.count(Hash.id))).limit(10).subquery()
   data = {}
@@ -50,6 +50,55 @@ def main():
     out.write(' '.join(['Sentiment'] + keys) + '\n')
     out.write(' '.join(['pos'] + map(lambda k: data[k]['pos'], keys)) + '\n')
     out.write(' '.join(['neg'] + map(lambda k: data[k]['neg'], keys)) + '\n')
+
+def time_based():
+  session = Session()
+  top = session.query(Hash.tag, func.count(Hash.id)).group_by(Hash.tag).order_by(desc(func.count(Hash.id))).limit(1).subquery()
+  data = {}
+
+  for tag, sent, count, date in session.query(Hash.tag, Tweet.sentiment, func.count(Hash.id), Tweet.date)\
+            .filter(Tweet.id==Hash.tweet_id)\
+            .join(top, Hash.tag == top.c.tag)\
+            .group_by(Tweet.sentiment, Hash.tag, Tweet.date)\
+            .order_by(desc(func.count(Hash.id))):
+    year, month, day, hour, minute = date.year, date.month, date.day, date.hour, date.minute
+    time = str((minute + 60 * hour + 24 * 60 * day) / 10)
+    print tag, sent, count, time
+    if time not in data:
+      data[time] = {'pos': 0, 'neg': 0}
+    data[time][sent] += count
+
+  keys = sorted(data.keys())
+  with open('time.data', 'w') as out:
+    out.write(' '.join(['Sentiment'] + keys) + '\n')
+    out.write(' '.join(['pos'] + map(lambda k: str(data[k]['pos']), keys)) + '\n')
+    out.write(' '.join(['neg'] + map(lambda k: str(data[k]['neg']), keys)) + '\n')
+
+def ratio():
+  session = Session()
+  top20 = session.query(Hash.tag, func.count(Hash.id)).group_by(Hash.tag).order_by(desc(func.count(Hash.id))).limit(20).subquery()
+  data = {}
+
+  for tag, sent, count in session.query(Hash.tag, Tweet.sentiment, func.count(Hash.id))\
+            .filter(Tweet.id==Hash.tweet_id)\
+            .join(top20, Hash.tag == top20.c.tag)\
+            .group_by(Tweet.sentiment, Hash.tag)\
+            .order_by(desc(func.count(Hash.id))):
+    if tag not in data:
+      data[tag] = {}
+    data[tag][sent] = float(count)
+  pprint(data)
+
+  keys = data.keys()
+  with open('ratio.data', 'w') as out:
+    out.write(' '.join(['Sentiment'] + keys) + '\n')
+    out.write(' '.join(['pos'] + map(lambda k: str(2*(-0.5 + data[k]['pos'] / (data[k]['pos'] + data[k]['neg']))), keys)) + '\n')
+
+
+def main():
+  chart_top10()
+  time_based()
+  ratio()
 
 if __name__ == '__main__':
   main()
