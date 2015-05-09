@@ -32,14 +32,16 @@ class Hash(Base):
 
 def main():
   session = Session()
-  top10 = session.query(Hash.tag, func.count(Hash.id)).group_by(Hash.tag).order_by(desc(func.count(Hash.id))).limit(10).subquery()
+  top10 = session.query(Hash.tag, func.count(Hash.id)).group_by(Hash.tag)\
+    .order_by(desc(func.count(Hash.id))).limit(10).subquery()
   data = {}
 
-  for tag, sent, count in session.query(Hash.tag, Tweet.sentiment, func.count(Hash.id))\
-            .filter(Tweet.id==Hash.tweet_id)\
-            .join(top10, Hash.tag == top10.c.tag)\
-            .group_by(Tweet.sentiment, Hash.tag)\
-            .order_by(desc(func.count(Hash.id))):
+  for tag, sent, count in session.query(Hash.tag, Tweet.sentiment,
+      func.count(Hash.id))\
+      .filter(Tweet.id==Hash.tweet_id)\
+      .join(top10, Hash.tag == top10.c.tag)\
+      .group_by(Tweet.sentiment, Hash.tag)\
+      .order_by(desc(func.count(Hash.id))):
     if tag not in data:
       data[tag] = {}
     data[tag][sent] = str(count)
