@@ -101,8 +101,7 @@ def main():
   api = tweepy.API(auth)
   l = DataStreamer(api)
   stream = tweepy.Stream(auth, l)
-  stream.filter(locations=[-180,-90,180,90], languages=['english'],
-    stall_warnings=True)
+  stream.filter(locations=[-180,-90,180,90], stall_warnings=True)
 
 if __name__ == '__main__':
   main()
